@@ -1,8 +1,26 @@
 # EKS Simple Auto Mode - Policies Demo
 
-This app configuration demonstrates [Nuon Policies](https://docs.nuon.co/concepts/policies) by deploying a whoami service on AWS EKS Auto Mode alongside components and policies that intentionally trigger violations.
+This app configuration demonstrates [Nuon Policies](https://docs.nuon.co/concepts/policies) by deploying a whoami service on AWS EKS Auto Mode alongside components and policies that intentionally trigger violations. 
 
-## Policy Scenarios
+This app demonstrates samples of polices you can automatically enforce on a production BYOC deployment with Nuon.
+
+First time creating an app? Check out our [getting started guide](https://docs.nuon.co/get-started/quickstart)
+
+## Setup
+
+```bash
+nuon apps create --name policies-demo
+nuon apps sync
+```
+
+## Testing Policy Violations
+
+This example app has [components](policies-demo/tree/main/components) S3 bucket, DynamoDB, and whomai-kube-system that already intentionally violate the example [policies](policies-demo/tree/main/policies). 
+
+Scenario 1, 2 and 3 trigger automatically on your first [install](https://docs.nuon.co/guides/app-install-life-cycle#install-life-cycle).
+
+
+## Policy Scenario Detail
 
 | # | Policy | Type | Enforcement | Trigger | Expected Result |
 |---|--------|------|-------------|---------|-----------------|
@@ -12,30 +30,6 @@ This app configuration demonstrates [Nuon Policies](https://docs.nuon.co/concept
 | 4 | Restricted Namespaces | `helm_chart` / OPA | **deny** | `whoami_kube_system` deploys to `kube-system` | Deploy blocked |
 | 5a | Runner-Only Access | `sandbox` / OPA | **deny** | Non-runner IAM principals in EKS access entries | Deploy blocked (latent) |
 | 5b | ECR Images Only | `helm_chart` / OPA | **deny** | `traefik/whoami:latest` is not from ECR | Deploy blocked |
-
-## Components
-
-| Component | Type | Purpose |
-|-----------|------|---------|
-| `certificate` | terraform_module | ACM wildcard certificate |
-| `whoami` | kubernetes_manifest | Whoami deployment in `whoami` namespace |
-| `application_load_balancer` | helm_chart | ALB ingress for whoami |
-| `s3_bucket` | terraform_module | S3 bucket (denied by policy #2) |
-| `demo_database` | terraform_module | DynamoDB table (denied on update by policy #3) |
-| `whoami_kube_system` | kubernetes_manifest | Whoami in `kube-system` (denied by policy #4) |
-
-## Setup
-
-```bash
-nuon apps create --name=eks-simple-auto-policies-demo
-nuon sync
-```
-
-## Testing Policy Violations
-
-This example app has [components](policies-demo/tree/main/components) S3 bucket, DynamoDB, whomai-kube-system that already intentionally violate the example [policies](policies-demo/tree/main/policies). 
-
-You don't need to change any files to see Scenario 1, 2, or 3.
 
 ### Scenario 1: Public EKS Endpoint (Warning)
 
@@ -66,23 +60,27 @@ This policy is **latent** by default — the current sandbox configuration only 
 
 The `whoami` component uses `traefik/whoami:latest` which is a public Docker Hub image, not from the install's ECR repository. The policy evaluates the rendered Kubernetes manifests and **denies** any container image that does not contain `.dkr.ecr.` in its image reference.
 
-## Viewing Policy Results in the Nuon UI
+## Components
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| `certificate` | terraform_module | ACM wildcard certificate |
+| `whoami` | kubernetes_manifest | Whoami deployment in `whoami` namespace |
+| `application_load_balancer` | helm_chart | ALB ingress for whoami |
+| `s3_bucket` | terraform_module | S3 bucket (denied by policy #2) |
+| `demo_database` | terraform_module | DynamoDB table (denied on update by policy #4) |
+| `whoami_kube_system` | kubernetes_manifest | Whoami in `kube-system` (denied by policy #3) |
+
+## Viewing Policy Results in Nuon
 
 1. Navigate to the install in the Nuon Dashboard.
-2. Open the **Deployments** tab and select a deployment.
+2. Click the Workflow tab.
 3. Click on any workflow step to see the **Policy Evaluation** card.
 4. Passed policies show green checkmarks, denied policies show red indicators with violation messages, and warnings show orange indicators.
 
 ## Application URLs
 
-{{- if .nuon.install.sandbox.outputs.nuon_dns }}
+Access your deployed whoami web app here:
+
 - **Whoami**: https://{{ .nuon.inputs.inputs.subdomain }}.{{ .nuon.install.sandbox.outputs.nuon_dns.public_domain.name }}
 {{- end }}
-
-## EKS Cluster Access
-
-```bash
-aws eks update-kubeconfig \
-  --name w-{{ .nuon.install.id }} \
-  --region {{ .nuon.install_stack.outputs.region }}
-```
