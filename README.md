@@ -33,23 +33,27 @@ nuon sync
 
 ## Testing Policy Violations
 
+This example app has [components](policies-demo/tree/main/components) S3 bucket, DynamoDB, whomai-kube-system that already intentionally violate the example [policies](policies-demo/tree/main/policies). 
+
+You don't need to change any files to see Scenario 1, 2, or 3.
+
 ### Scenario 1: Public EKS Endpoint (Warning)
 
-The sandbox provisions an EKS cluster with `cluster_endpoint_public_access = true`. During sandbox provisioning, the policy evaluates the Terraform plan and produces a **warning**. In the Nuon UI, you will see the warning on the sandbox provisioning step and can choose to continue.
+The sandbox provisions an EKS cluster with `cluster_endpoint_public_access = true`. During sandbox provisioning, the policy evaluates the Terraform plan and produces a **warning**.
 
 ### Scenario 2: S3 Bucket Creation (Deny)
 
 Deploy the install. When the `s3_bucket` component runs, the policy evaluates its Terraform plan and **denies** the `aws_s3_bucket` resource creation. The deploy is blocked and the denial message appears in the Policy Evaluation card.
 
-### Scenario 3: Database Modification (Deny After First Deploy)
+### Scenario 3: Restricted Namespaces (Deny)
+
+The `whoami_kube_system` component attempts to deploy a manifest to the `kube-system` namespace. The policy evaluates the rendered manifest and **denies** deployment to any restricted namespace (`default`, `kube-system`, `kube-public`).
+
+### Scenario 4: Database Modification (Deny After First Deploy)
 
 1. Deploy with the default `billing_mode = PAY_PER_REQUEST` — the `demo_database` component deploys successfully since the policy only blocks `update` and `delete` actions.
 2. Change the `billing_mode` input to `PROVISIONED` in the Nuon dashboard.
 3. Redeploy — the policy detects the `update` action on the DynamoDB table and **denies** the deploy with: *"Database modification denied: changes could cause downtime"*.
-
-### Scenario 4: Restricted Namespaces (Deny)
-
-The `whoami_kube_system` component attempts to deploy a manifest to the `kube-system` namespace. The policy evaluates the rendered manifest and **denies** deployment to any restricted namespace (`default`, `kube-system`, `kube-public`).
 
 ### Scenario 5a: Runner-Only Access Entries (Deny)
 
